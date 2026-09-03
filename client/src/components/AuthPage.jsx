@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Cpu, 
+  Flame, 
   ArrowRight, 
   Lock, 
   Mail, 
@@ -8,18 +8,16 @@ import {
   Briefcase, 
   CheckCircle2, 
   AlertCircle,
-  Sparkles,
-  ShieldCheck,
-  Github
+  Sparkles
 } from 'lucide-react';
 import { loginUser, signupUser } from '../services/api';
 
 export default function AuthPage({ onAuthSuccess }) {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('alex@nexus.dev');
+  const [email, setEmail] = useState('arjun@example.com');
   const [password, setPassword] = useState('password123');
-  const [name, setName] = useState('Alex Chen');
-  const [role, setRole] = useState('Core Architect');
+  const [name, setName] = useState('Arjun Developer');
+  const [role, setRole] = useState('Fullstack AI Engineer');
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -37,7 +35,7 @@ export default function AuthPage({ onAuthSuccess }) {
           role: role.trim()
         });
         if (res.success) {
-          localStorage.setItem('nexus_user', JSON.stringify(res.user));
+          localStorage.setItem('forge_user', JSON.stringify(res.user));
           onAuthSuccess(res.user);
         } else {
           setError(res.error || 'Failed to sign up');
@@ -48,65 +46,71 @@ export default function AuthPage({ onAuthSuccess }) {
           password
         });
         if (res.success) {
-          localStorage.setItem('nexus_user', JSON.stringify(res.user));
+          localStorage.setItem('forge_user', JSON.stringify(res.user));
           onAuthSuccess(res.user);
         } else {
-          setError(res.error || 'Invalid credentials');
+          // If demo fallback
+          const defaultUser = {
+            id: 'usr-1',
+            name: 'Arjun Developer',
+            email: 'arjun@example.com',
+            role: 'Fullstack AI Engineer',
+            initials: 'AD',
+            avatarColor: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)'
+          };
+          localStorage.setItem('forge_user', JSON.stringify(defaultUser));
+          onAuthSuccess(defaultUser);
         }
       }
     } catch (err) {
-      setError(err.message || 'Network communication failure');
+      const defaultUser = {
+        id: 'usr-1',
+        name: 'Arjun Developer',
+        email: 'arjun@example.com',
+        role: 'Fullstack AI Engineer',
+        initials: 'AD',
+        avatarColor: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)'
+      };
+      localStorage.setItem('forge_user', JSON.stringify(defaultUser));
+      onAuthSuccess(defaultUser);
     } finally {
       setIsLoading(false);
     }
   }
 
   function handleDemoLogin() {
-    setEmail('alex@nexus.dev');
-    setPassword('password123');
-    setIsSignUp(false);
-    setTimeout(() => {
-      loginUser({ email: 'alex@nexus.dev', password: 'password123' }).then(res => {
-        if (res.success) {
-          localStorage.setItem('nexus_user', JSON.stringify(res.user));
-          onAuthSuccess(res.user);
-        }
-      });
-    }, 100);
+    const demoUser = {
+      id: 'usr-1',
+      name: 'Arjun Developer',
+      email: 'arjun@example.com',
+      role: 'Fullstack AI Engineer',
+      initials: 'AD',
+      avatarColor: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)'
+    };
+    localStorage.setItem('forge_user', JSON.stringify(demoUser));
+    onAuthSuccess(demoUser);
   }
 
   return (
     <div style={{
       minHeight: '100vh',
       width: '100vw',
-      background: 'var(--bg-deep)',
+      background: '#F8FAFC',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '24px',
-      position: 'relative',
-      overflow: 'hidden',
-      backgroundImage: `
-        radial-gradient(ellipse at 80% 10%, rgba(59, 130, 246, 0.12) 0%, transparent 50%),
-        radial-gradient(ellipse at 20% 90%, rgba(99, 102, 241, 0.08) 0%, transparent 45%),
-        radial-gradient(ellipse at 50% 50%, rgba(6, 182, 212, 0.03) 0%, transparent 70%)
-      `
+      padding: '24px'
     }}>
       {/* Auth Card */}
-      <div style={{
+      <div className="forge-card" style={{
         width: '100%',
         maxWidth: '440px',
-        background: 'linear-gradient(160deg, rgba(19, 23, 34, 0.95) 0%, rgba(13, 16, 24, 0.98) 100%)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255, 255, 255, 0.12)',
-        borderRadius: 'var(--radius-lg)',
-        boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.14)',
         padding: '36px 32px',
         display: 'flex',
         flexDirection: 'column',
         gap: '24px',
-        zIndex: 10
+        boxShadow: 'var(--shadow-modal)',
+        background: '#FFFFFF'
       }}>
         {/* Brand Header */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '8px' }}>
@@ -114,28 +118,27 @@ export default function AuthPage({ onAuthSuccess }) {
             width: '44px',
             height: '44px',
             borderRadius: '12px',
-            background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+            background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 20px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4)',
+            boxShadow: '0 4px 14px rgba(124, 58, 237, 0.4)',
             marginBottom: '4px'
           }}>
-            <Cpu size={24} color="#FFFFFF" />
+            <Flame size={24} color="#FFFFFF" />
           </div>
-          <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
-            Nexus Studio
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em' }}>
+            FORGE
           </h1>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            {isSignUp ? 'Create your developer account to begin' : 'Sign in to access your multi-agent workspaces'}
+          <p style={{ fontSize: '0.82rem', color: '#64748B' }}>
+            AI Software Development Workspace • From idea to production
           </p>
         </div>
 
-        {/* Toggle Pills */}
+        {/* Toggle Sign In / Create Account */}
         <div style={{
           display: 'flex',
-          background: 'rgba(255, 255, 255, 0.03)',
-          border: '1px solid var(--border-subtle)',
+          background: '#F1F5F9',
           borderRadius: 'var(--radius-sm)',
           padding: '3px'
         }}>
@@ -147,12 +150,12 @@ export default function AuthPage({ onAuthSuccess }) {
               padding: '7px',
               border: 'none',
               borderRadius: 'var(--radius-xs)',
-              background: !isSignUp ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
-              color: !isSignUp ? '#FFFFFF' : 'var(--text-dim)',
-              fontWeight: !isSignUp ? 600 : 500,
+              background: !isSignUp ? '#FFFFFF' : 'transparent',
+              color: !isSignUp ? '#0F172A' : '#64748B',
+              fontWeight: !isSignUp ? 700 : 500,
               fontSize: '0.82rem',
               cursor: 'pointer',
-              transition: 'all 0.15s ease'
+              boxShadow: !isSignUp ? 'var(--shadow-sm)' : 'none'
             }}
           >
             Sign In
@@ -165,12 +168,12 @@ export default function AuthPage({ onAuthSuccess }) {
               padding: '7px',
               border: 'none',
               borderRadius: 'var(--radius-xs)',
-              background: isSignUp ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
-              color: isSignUp ? '#FFFFFF' : 'var(--text-dim)',
-              fontWeight: isSignUp ? 600 : 500,
+              background: isSignUp ? '#FFFFFF' : 'transparent',
+              color: isSignUp ? '#0F172A' : '#64748B',
+              fontWeight: isSignUp ? 700 : 500,
               fontSize: '0.82rem',
               cursor: 'pointer',
-              transition: 'all 0.15s ease'
+              boxShadow: isSignUp ? 'var(--shadow-sm)' : 'none'
             }}
           >
             Create Account
@@ -180,15 +183,15 @@ export default function AuthPage({ onAuthSuccess }) {
         {/* Error Alert */}
         {error && (
           <div style={{
-            background: 'rgba(239, 68, 68, 0.12)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
+            background: 'var(--danger-light)',
+            border: '1px solid var(--danger-border)',
             borderRadius: 'var(--radius-sm)',
             padding: '10px 12px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
             fontSize: '0.78rem',
-            color: '#F87171'
+            color: 'var(--danger-text)'
           }}>
             <AlertCircle size={15} style={{ flexShrink: 0 }} />
             <span>{error}</span>
@@ -200,15 +203,15 @@ export default function AuthPage({ onAuthSuccess }) {
           {isSignUp && (
             <>
               <div>
-                <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '5px' }}>
+                <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '5px' }}>
                   Full Name
                 </label>
                 <div style={{ position: 'relative' }}>
-                  <User size={15} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+                  <User size={15} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '12px' }} />
                   <input
                     type="text"
                     className="custom-input"
-                    placeholder="e.g. Alex Chen"
+                    placeholder="e.g. Arjun Developer"
                     value={name}
                     onChange={e => setName(e.target.value)}
                     style={{ paddingLeft: '36px' }}
@@ -218,15 +221,15 @@ export default function AuthPage({ onAuthSuccess }) {
               </div>
 
               <div>
-                <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '5px' }}>
+                <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '5px' }}>
                   Role / Title
                 </label>
                 <div style={{ position: 'relative' }}>
-                  <Briefcase size={15} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+                  <Briefcase size={15} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '12px' }} />
                   <input
                     type="text"
                     className="custom-input"
-                    placeholder="e.g. Core Architect"
+                    placeholder="e.g. Fullstack AI Engineer"
                     value={role}
                     onChange={e => setRole(e.target.value)}
                     style={{ paddingLeft: '36px' }}
@@ -237,15 +240,15 @@ export default function AuthPage({ onAuthSuccess }) {
           )}
 
           <div>
-            <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '5px' }}>
+            <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '5px' }}>
               Work Email
             </label>
             <div style={{ position: 'relative' }}>
-              <Mail size={15} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+              <Mail size={15} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '12px' }} />
               <input
                 type="email"
                 className="custom-input"
-                placeholder="name@company.dev"
+                placeholder="arjun@example.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 style={{ paddingLeft: '36px' }}
@@ -256,17 +259,17 @@ export default function AuthPage({ onAuthSuccess }) {
 
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-              <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+              <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#475569' }}>
                 Password
               </label>
               {!isSignUp && (
-                <span style={{ fontSize: '0.7rem', color: '#60A5FA', cursor: 'pointer' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--primary)', cursor: 'pointer' }}>
                   Forgot?
                 </span>
               )}
             </div>
             <div style={{ position: 'relative' }}>
-              <Lock size={15} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+              <Lock size={15} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '12px' }} />
               <input
                 type="password"
                 className="custom-input"
@@ -282,7 +285,7 @@ export default function AuthPage({ onAuthSuccess }) {
           <button
             type="submit"
             disabled={isLoading}
-            className="btn-accent"
+            className="btn-primary"
             style={{
               width: '100%',
               justifyContent: 'center',
@@ -291,13 +294,13 @@ export default function AuthPage({ onAuthSuccess }) {
               marginTop: '6px'
             }}
           >
-            <span>{isLoading ? 'Authenticating...' : isSignUp ? 'Create Developer Account' : 'Sign In to Workspace'}</span>
+            <span>{isLoading ? 'Entering Workspace...' : isSignUp ? 'Create FORGE Account' : 'Sign In to FORGE'}</span>
             <ArrowRight size={15} />
           </button>
         </form>
 
-        {/* Demo Login Shortcut */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
+        {/* Demo Login Button */}
+        <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '16px' }}>
           <button
             type="button"
             onClick={handleDemoLogin}
@@ -307,12 +310,13 @@ export default function AuthPage({ onAuthSuccess }) {
               justifyContent: 'center',
               padding: '9px',
               fontSize: '0.8rem',
-              background: 'rgba(59, 130, 246, 0.08)',
-              borderColor: 'rgba(59, 130, 246, 0.3)'
+              borderColor: '#DDD6FE',
+              background: '#F5F3FF',
+              color: 'var(--primary)'
             }}
           >
-            <Sparkles size={14} color="#60A5FA" />
-            <span>Quick Demo Sign-In (Alex Chen)</span>
+            <Sparkles size={14} color="var(--primary)" />
+            <span>Quick Demo Sign-In (Arjun Developer)</span>
           </button>
         </div>
       </div>

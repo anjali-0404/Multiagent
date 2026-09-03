@@ -2,53 +2,44 @@ import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
-import Playground from './components/Playground';
-import WorkflowBuilder from './components/WorkflowBuilder';
-import KnowledgeBase from './components/KnowledgeBase';
-import ImageStudio from './components/ImageStudio';
-import ApiKeyManager from './components/ApiKeyManager';
-import BillingModal from './components/BillingModal';
+import Onboarding from './components/Onboarding';
+import AgentActivity from './components/AgentActivity';
+import Architecture from './components/Architecture';
+import TasksIssues from './components/TasksIssues';
+import CodeReviews from './components/CodeReviews';
+import Deployments from './components/Deployments';
+import Settings from './components/Settings';
 import ProfileModal from './components/ProfileModal';
 import AuthPage from './components/AuthPage';
-import { fetchStats, fetchCurrentUser } from './services/api';
+
+const DEFAULT_PROJECT = {
+  id: 'proj-1',
+  title: 'Expense Tracker SaaS',
+  description: 'AI-powered expense tracking platform for college students with AI insights, budget planning, and real-time analytics.',
+  status: 'Active',
+  progress: 68,
+  tasksCompleted: 32,
+  tasksTotal: 47,
+  activeAgents: 8,
+  openIssues: 12
+};
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem('nexus_user');
+    const saved = localStorage.getItem('forge_user');
     return saved ? JSON.parse(saved) : null;
   });
-  
+
   const [currentTab, setCurrentTab] = useState('dashboard');
-  const [stats, setStats] = useState(null);
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [isBillingOpen, setIsBillingOpen] = useState(false);
+  const [project, setProject] = useState(DEFAULT_PROJECT);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-
-  useEffect(() => {
-    if (currentUser) {
-      loadTelemetry();
-    }
-  }, [currentUser]);
-
-  async function loadTelemetry() {
-    try {
-      const res = await fetchStats();
-      if (res.success) {
-        setStats(res.stats);
-        setRecentActivity(res.recentActivity);
-      }
-    } catch (err) {
-      console.error('Failed to fetch telemetry:', err);
-    }
-  }
 
   function handleAuthSuccess(user) {
     setCurrentUser(user);
-    loadTelemetry();
   }
 
   function handleLogout() {
-    localStorage.removeItem('nexus_user');
+    localStorage.removeItem('forge_user');
     setCurrentUser(null);
     setIsProfileOpen(false);
   }
@@ -57,70 +48,85 @@ export default function App() {
     setCurrentUser(updatedUser);
   }
 
-  // If user is not logged in, show the Login/Sign Up Page
+  function handleCreateProject(newProj) {
+    setProject({
+      ...DEFAULT_PROJECT,
+      title: newProj.title,
+      description: newProj.description
+    });
+    setCurrentTab('dashboard');
+  }
+
+  // Show Auth Gateway if not logged in
   if (!currentUser) {
     return <AuthPage onAuthSuccess={handleAuthSuccess} />;
   }
 
   return (
     <div className="app-container">
-      {/* Fixed Sidebar */}
+      {/* FORGE Dark Sidebar */}
       <Sidebar 
         currentTab={currentTab} 
-        onSelectTab={setCurrentTab} 
-        onOpenBilling={() => setIsBillingOpen(true)} 
+        onSelectTab={setCurrentTab}
+        onOpenProfile={() => setIsProfileOpen(true)}
+        user={currentUser}
       />
 
       {/* Main Content Area */}
       <div className="main-content">
         <Navbar 
-          stats={stats} 
-          recentActivity={recentActivity} 
+          project={project}
           user={currentUser}
-          onOpenBilling={() => setIsBillingOpen(true)}
           onOpenProfile={() => setIsProfileOpen(true)}
-          onTabChange={setCurrentTab}
+          onOpenNewProject={() => setCurrentTab('onboarding')}
         />
 
         <main style={{ flex: 1 }}>
           {currentTab === 'dashboard' && (
             <Dashboard 
-              stats={stats} 
-              recentActivity={recentActivity} 
-              onSelectTab={setCurrentTab} 
-              onRefresh={loadTelemetry}
+              project={project}
+              onSelectTab={setCurrentTab}
+              onOpenNewTask={() => setCurrentTab('tasks')}
             />
           )}
 
-          {currentTab === 'playground' && (
-            <Playground onUpdateStats={loadTelemetry} />
+          {currentTab === 'onboarding' && (
+            <Onboarding 
+              onCreateProject={handleCreateProject}
+            />
           )}
 
-          {currentTab === 'workflows' && (
-            <WorkflowBuilder onUpdateStats={loadTelemetry} />
+          {currentTab === 'agents' && (
+            <AgentActivity />
           )}
 
-          {currentTab === 'knowledge' && (
-            <KnowledgeBase onUpdateStats={loadTelemetry} />
+          {currentTab === 'architecture' && (
+            <Architecture />
           )}
 
-          {currentTab === 'images' && (
-            <ImageStudio onUpdateStats={loadTelemetry} />
+          {currentTab === 'tasks' && (
+            <TasksIssues />
           )}
 
-          {currentTab === 'apikeys' && (
-            <ApiKeyManager onUpdateStats={loadTelemetry} />
+          {currentTab === 'reviews' && (
+            <CodeReviews />
+          )}
+
+          {currentTab === 'deployments' && (
+            <Deployments />
+          )}
+
+          {currentTab === 'integrations' && (
+            <Settings project={project} user={currentUser} />
+          )}
+
+          {currentTab === 'settings' && (
+            <Settings project={project} user={currentUser} />
           )}
         </main>
       </div>
 
-      {/* Subscription & Billing Modal */}
-      <BillingModal 
-        isOpen={isBillingOpen} 
-        onClose={() => setIsBillingOpen(false)} 
-      />
-
-      {/* Editable Profile Modal */}
+      {/* Profile Editor Modal */}
       <ProfileModal 
         isOpen={isProfileOpen} 
         onClose={() => setIsProfileOpen(false)} 
