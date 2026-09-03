@@ -6,14 +6,24 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DB_FILE = path.join(__dirname, '../../data/db.json');
 
-// Ensure data directory exists
 const dataDir = path.dirname(DB_FILE);
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Initial default state
 const initialData = {
+  users: [
+    {
+      id: 'usr-1',
+      name: 'Alex Chen',
+      email: 'alex@nexus.dev',
+      role: 'Core Architect',
+      password: 'password123',
+      initials: 'AC',
+      avatarColor: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
+      createdAt: '2026-08-01T00:00:00Z'
+    }
+  ],
   stats: {
     totalTokens: 1428500,
     apiCalls: 48920,
@@ -31,9 +41,9 @@ const initialData = {
       { date: 'Sep 03', tokens: 345000, cost: 10.35 }
     ],
     modelUsage: [
-      { name: 'GPT-4o', percentage: 45, color: '#10B981' },
-      { name: 'Claude 3.5 Sonnet', percentage: 30, color: '#8B5CF6' },
-      { name: 'DeepSeek R1', percentage: 15, color: '#06B6D4' },
+      { name: 'GPT-4o', percentage: 45, color: '#3B82F6' },
+      { name: 'Claude 3.5 Sonnet', percentage: 30, color: '#10B981' },
+      { name: 'DeepSeek R1', percentage: 15, color: '#8B5CF6' },
       { name: 'Gemini 1.5 Pro', percentage: 10, color: '#F59E0B' }
     ]
   },
@@ -215,6 +225,10 @@ class Database {
       if (fs.existsSync(DB_FILE)) {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
         this.data = JSON.parse(raw);
+        if (!this.data.users) {
+          this.data.users = initialData.users;
+          this.save();
+        }
       } else {
         this.data = initialData;
         this.save();
@@ -231,6 +245,36 @@ class Database {
     } catch (err) {
       console.error('Error saving DB file:', err);
     }
+  }
+
+  // Users & Auth
+  getUsers() {
+    return this.data.users || [];
+  }
+
+  getUserByEmail(email) {
+    return (this.data.users || []).find(u => u.email.toLowerCase() === email.toLowerCase());
+  }
+
+  getUserById(id) {
+    return (this.data.users || []).find(u => u.id === id);
+  }
+
+  createUser(user) {
+    if (!this.data.users) this.data.users = [];
+    this.data.users.push(user);
+    this.save();
+    return user;
+  }
+
+  updateUser(id, updates) {
+    const userIndex = (this.data.users || []).findIndex(u => u.id === id);
+    if (userIndex >= 0) {
+      this.data.users[userIndex] = { ...this.data.users[userIndex], ...updates };
+      this.save();
+      return this.data.users[userIndex];
+    }
+    return null;
   }
 
   getStats() {

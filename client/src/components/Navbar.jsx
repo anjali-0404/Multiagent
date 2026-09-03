@@ -8,14 +8,20 @@ import {
   ShieldCheck,
   Zap,
   Command,
-  Activity
+  Activity,
+  Edit3,
+  User
 } from 'lucide-react';
 
-export default function Navbar({ stats, recentActivity, onOpenBilling, onTabChange }) {
+export default function Navbar({ stats, recentActivity, onOpenBilling, onOpenProfile, user }) {
   const [showNotifications, setShowNotifications] = useState(false);
-  const [env, setEnv] = useState('Production (us-east-1)');
 
   const budgetPct = stats ? Math.min(100, Math.round((stats.currentSpendUsd / stats.monthlyBudgetUsd) * 100)) : 29;
+
+  const displayName = user?.name || 'Alex Chen';
+  const displayRole = user?.role || 'Core Architect';
+  const displayInitials = user?.initials || 'AC';
+  const avatarBg = user?.avatarColor || 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)';
 
   return (
     <header style={{
@@ -122,7 +128,7 @@ export default function Navbar({ stats, recentActivity, onOpenBilling, onTabChan
         </div>
       </div>
 
-      {/* Right: Spending, Upgrade & User */}
+      {/* Right: Spending, Upgrade & User Profile */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
         {/* Usage Gauge */}
         <button
@@ -223,34 +229,57 @@ export default function Navbar({ stats, recentActivity, onOpenBilling, onTabChan
           )}
         </div>
 
-        {/* User Profile */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '9px',
-          paddingLeft: '6px',
-          borderLeft: '1px solid var(--border-subtle)'
-        }}>
+        {/* User Profile - CLICKABLE & EDITABLE */}
+        <button
+          onClick={onOpenProfile}
+          title="Click to edit profile & account details"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '4px 8px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid var(--border-subtle)',
+            cursor: 'pointer',
+            transition: 'all 0.18s ease'
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+            e.currentTarget.style.background = 'rgba(59, 130, 246, 0.08)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = 'var(--border-subtle)';
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+          }}
+        >
           <div style={{
-            width: '32px',
-            height: '32px',
+            width: '30px',
+            height: '30px',
             borderRadius: 'var(--radius-full)',
-            background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
+            background: avatarBg,
+            border: '1px solid rgba(255, 255, 255, 0.2)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '0.78rem',
+            fontSize: '0.76rem',
             fontWeight: 700,
-            color: 'var(--text-main)'
+            color: '#FFFFFF'
           }}>
-            AC
+            {displayInitials}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>Alex Chen</span>
-            <span style={{ fontSize: '0.68rem', color: 'var(--text-dim)' }}>Core Architect</span>
+          <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                {displayName}
+              </span>
+              <Edit3 size={11} color="#60A5FA" />
+            </div>
+            <span style={{ fontSize: '0.68rem', color: 'var(--text-dim)' }}>
+              {displayRole}
+            </span>
           </div>
-        </div>
+        </button>
       </div>
     </header>
   );

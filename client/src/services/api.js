@@ -1,5 +1,39 @@
 const API_BASE = '/api';
 
+// Auth & User Profile
+export async function loginUser(credentials) {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(credentials)
+  });
+  return res.json();
+}
+
+export async function signupUser(userData) {
+  const res = await fetch(`${API_BASE}/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData)
+  });
+  return res.json();
+}
+
+export async function fetchCurrentUser() {
+  const res = await fetch(`${API_BASE}/auth/me`);
+  return res.json();
+}
+
+export async function updateUserProfile(profileData) {
+  const res = await fetch(`${API_BASE}/auth/profile`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profileData)
+  });
+  return res.json();
+}
+
+// Stats & Telemetry
 export async function fetchStats() {
   const res = await fetch(`${API_BASE}/stats`);
   return res.json();

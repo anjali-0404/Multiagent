@@ -6,6 +6,7 @@ import workflowsRouter from './routes/workflows.js';
 import documentsRouter from './routes/documents.js';
 import imagesRouter from './routes/images.js';
 import apikeysRouter from './routes/apikeys.js';
+import authRouter from './routes/auth.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -36,6 +37,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Mount Routes
+app.use('/api/auth', authRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/workflows', workflowsRouter);

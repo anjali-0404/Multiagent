@@ -8,17 +8,27 @@ import KnowledgeBase from './components/KnowledgeBase';
 import ImageStudio from './components/ImageStudio';
 import ApiKeyManager from './components/ApiKeyManager';
 import BillingModal from './components/BillingModal';
-import { fetchStats } from './services/api';
+import ProfileModal from './components/ProfileModal';
+import AuthPage from './components/AuthPage';
+import { fetchStats, fetchCurrentUser } from './services/api';
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('nexus_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [stats, setStats] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
   const [isBillingOpen, setIsBillingOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
-    loadTelemetry();
-  }, []);
+    if (currentUser) {
+      loadTelemetry();
+    }
+  }, [currentUser]);
 
   async function loadTelemetry() {
     try {
@@ -30,6 +40,26 @@ export default function App() {
     } catch (err) {
       console.error('Failed to fetch telemetry:', err);
     }
+  }
+
+  function handleAuthSuccess(user) {
+    setCurrentUser(user);
+    loadTelemetry();
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('nexus_user');
+    setCurrentUser(null);
+    setIsProfileOpen(false);
+  }
+
+  function handleUpdateUser(updatedUser) {
+    setCurrentUser(updatedUser);
+  }
+
+  // If user is not logged in, show the Login/Sign Up Page
+  if (!currentUser) {
+    return <AuthPage onAuthSuccess={handleAuthSuccess} />;
   }
 
   return (
@@ -46,7 +76,9 @@ export default function App() {
         <Navbar 
           stats={stats} 
           recentActivity={recentActivity} 
+          user={currentUser}
           onOpenBilling={() => setIsBillingOpen(true)}
+          onOpenProfile={() => setIsProfileOpen(true)}
           onTabChange={setCurrentTab}
         />
 
@@ -86,6 +118,15 @@ export default function App() {
       <BillingModal 
         isOpen={isBillingOpen} 
         onClose={() => setIsBillingOpen(false)} 
+      />
+
+      {/* Editable Profile Modal */}
+      <ProfileModal 
+        isOpen={isProfileOpen} 
+        onClose={() => setIsProfileOpen(false)} 
+        user={currentUser}
+        onUpdateUser={handleUpdateUser}
+        onLogout={handleLogout}
       />
     </div>
   );
