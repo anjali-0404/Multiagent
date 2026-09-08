@@ -15,14 +15,14 @@ router.get('/', (req, res) => {
 });
 
 // POST /api/documents - upload/ingest document
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { title, category, content } = req.body;
     if (!title || !content) {
       return res.status(400).json({ success: false, error: 'Title and content are required' });
     }
 
-    const chunks = chunkText(content);
+    const chunks = await chunkText(content, 250, 40, title, category);
     const newDoc = {
       id: `doc-${Date.now()}`,
       title,
@@ -49,7 +49,7 @@ router.post('/', (req, res) => {
 });
 
 // POST /api/documents/search - semantic search against knowledge base
-router.post('/search', (req, res) => {
+router.post('/search', async (req, res) => {
   try {
     const { query } = req.body;
     if (!query) {
@@ -57,7 +57,7 @@ router.post('/search', (req, res) => {
     }
 
     const docs = db.getDocuments();
-    const results = searchVectors(query, docs);
+    const results = await searchVectors(query, docs);
 
     db.logActivity({
       event: 'Semantic Vector Query',

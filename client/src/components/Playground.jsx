@@ -12,7 +12,7 @@ import {
   CornerDownLeft,
   ChevronRight
 } from 'lucide-react';
-import { sendChatCompletion, fetchChatHistory, deleteChatSession } from '../services/api';
+import { sendChatCompletion, streamChatCompletion, fetchChatHistory, deleteChatSession } from '../services/api';
 
 const AVAILABLE_MODELS = [
   { id: 'Claude 3.5 Sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', context: '200k' },
@@ -109,34 +109,105 @@ export default function Playground({ onUpdateStats }) {
   async function handleSend() {
     if (!inputPrompt.trim() || isLoading) return;
 
-    const userMessage = { role: 'user', content: inputPrompt.trim() };
+    const userText = inputPrompt.trim();
+    const userMessage = { role: 'user', content: userText };
     const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    
+    // Add placeholder assistant message for live typing
+    const assistantMessageId = `msg-${Date.now()}`;
+    const streamingAssistantMessage = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      model: selectedModel,
+      usage: { totalTokens: 0 }
+    };
+
+    setMessages([...updatedMessages, streamingAssistantMessage]);
     setInputPrompt('');
     setIsLoading(true);
 
-    try {
-      const res = await sendChatCompletion({
-        model: selectedModel,
-        messages: updatedMessages,
-        systemPrompt,
-        temperature,
-        maxTokens,
-        chatId: currentChatId
-      });
+    const payload = {
+      model: selectedModel,
+      messages: updatedMessages,
+      systemPrompt,
+      temperature,
+      maxTokens,
+      chatId: currentChatId
+    };
 
-      if (res.success) {
-        setMessages(prev => [...prev, res.message]);
+    let streamSucceeded = false;
+
+    await streamChatCompletion(
+      payload,
+      // On each streamed text chunk
+      (accumulatedText) => {
+        streamSucceeded = true;
+        setMessages(prev => {
+          const next = [...prev];
+          const lastIdx = next.length - 1;
+          if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
+            next[lastIdx] = { ...next[lastIdx], content: accumulatedText };
+          }
+          return next;
+        });
+      },
+      // On stream done
+      (finalText, usage) => {
+        streamSucceeded = true;
+        setMessages(prev => {
+          const next = [...prev];
+          const lastIdx = next.length - 1;
+          if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
+            next[lastIdx] = {
+              ...next[lastIdx],
+              content: finalText,
+              usage: usage || { totalTokens: Math.ceil(finalText.length / 4) }
+            };
+          }
+          return next;
+        });
         if (onUpdateStats) onUpdateStats();
-        loadChatHistory();
-      } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${res.error || 'Failed to infer response'}` }]);
+      },
+      // On error, fall back to standard non-streaming POST
+      async (err) => {
+        console.warn('Streaming failed or unavailable, falling back to standard completion:', err);
+        if (!streamSucceeded) {
+          try {
+            const res = await sendChatCompletion(payload);
+            if (res.success && res.message) {
+              setMessages(prev => {
+                const next = [...prev];
+                next[next.length - 1] = res.message;
+                return next;
+              });
+              if (onUpdateStats) onUpdateStats();
+              loadChatHistory();
+            } else {
+              setMessages(prev => {
+                const next = [...prev];
+                next[next.length - 1] = {
+                  role: 'assistant',
+                  content: `Error: ${res.error || 'Failed to infer response'}`
+                };
+                return next;
+              });
+            }
+          } catch (fallbackErr) {
+            setMessages(prev => {
+              const next = [...prev];
+              next[next.length - 1] = {
+                role: 'assistant',
+                content: `Network error: ${fallbackErr.message}`
+              };
+              return next;
+            });
+          }
+        }
       }
-    } catch (err) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `Network error: ${err.message}` }]);
-    } finally {
-      setIsLoading(false);
-    }
+    );
+
+    setIsLoading(false);
   }
 
   function copyToClipboard(text, id) {

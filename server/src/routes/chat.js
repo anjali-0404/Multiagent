@@ -77,14 +77,52 @@ router.post('/completions', async (req, res) => {
   }
 });
 
-// DELETE /api/chat/:id - delete chat session
-router.delete('/:id', (req, res) => {
+// POST /api/chat/stream - SSE streaming pass-through
+router.post('/stream', async (req, res) => {
+  const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+  const INTERNAL_SERVICE_SECRET = process.env.INTERNAL_SERVICE_SECRET || 'forge_dev_secret_key_12345';
+
   try {
-    const { id } = req.params;
-    db.deleteChat(id);
-    res.json({ success: true, message: 'Chat deleted' });
+    const { model, messages, systemPrompt, temperature, maxTokens } = req.body;
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    const aiRes = await fetch(`${AI_SERVICE_URL}/infer/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Secret': INTERNAL_SERVICE_SECRET
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        systemPrompt,
+        temperature,
+        maxTokens
+      })
+    });
+
+    if (!aiRes.ok) {
+      res.write(`data: ${JSON.stringify({ chunk: 'Could not connect to streaming service.', done: true })}\n\n`);
+      return res.end();
+    }
+
+    const reader = aiRes.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(decoder.decode(value, { stream: true }));
+    }
+    res.end();
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Chat stream error:', error);
+    res.write(`data: ${JSON.stringify({ chunk: `Stream error: ${error.message}`, done: true })}\n\n`);
+    res.end();
   }
 });
 

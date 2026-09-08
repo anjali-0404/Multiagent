@@ -10,6 +10,7 @@ import documentsRouter from './routes/documents.js';
 import imagesRouter from './routes/images.js';
 import apikeysRouter from './routes/apikeys.js';
 import authRouter from './routes/auth.js';
+import agentsRouter from './routes/agents.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,6 +51,7 @@ app.use('/api/workflows', workflowsRouter);
 app.use('/api/documents', documentsRouter);
 app.use('/api/images', imagesRouter);
 app.use('/api/keys', apikeysRouter);
+app.use('/api/agents', agentsRouter);
 
 // Serve static frontend build if present (for production on Render / Vercel / Heroku)
 const clientDistPath = path.join(__dirname, '../../client/dist');

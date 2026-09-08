@@ -1,4 +1,7 @@
-// AI Service: Handles simulated multi-model generation, context reasoning, and token analytics
+// AI Service: Proxies inference to Python FastAPI AI service with local simulation fallback
+
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const INTERNAL_SERVICE_SECRET = process.env.INTERNAL_SERVICE_SECRET || 'forge_dev_secret_key_12345';
 
 const MODEL_PROFILES = {
   'GPT-4o': {
@@ -32,6 +35,42 @@ const MODEL_PROFILES = {
 };
 
 export async function generateChatResponse({ model = 'GPT-4o', messages = [], systemPrompt = '', temperature = 0.7, maxTokens = 1024 }) {
+  // 1. Attempt to proxy to FastAPI Python service
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+    const res = await fetch(`${AI_SERVICE_URL}/infer/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Secret': INTERNAL_SERVICE_SECRET
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        systemPrompt,
+        temperature,
+        maxTokens
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
+    console.warn(`[AI Service Proxy] FastAPI returned status ${res.status}. Falling back to simulation.`);
+  } catch (err) {
+    console.warn(`[AI Service Proxy] Could not reach AI service at ${AI_SERVICE_URL} (${err.message}). Using local fallback.`);
+  }
+
+  // 2. Graceful Fallback to Local Simulation if Python service is offline
+  return generateLocalFallbackResponse({ model, messages, systemPrompt, temperature, maxTokens });
+}
+
+function generateLocalFallbackResponse({ model, messages, systemPrompt, temperature, maxTokens }) {
   const lastUserMsg = messages.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
   const promptLower = lastUserMsg.toLowerCase();
 
@@ -52,44 +91,7 @@ Would you like me to synthesize the complete JSON DAG schema for your pipeline?`
 - **Indexing**: HNSW index with \`m=16\`, \`ef_construction=64\` using cosine distance metrics.
 - **Query Optimization**: HyDE (Hypothetical Document Embeddings) coupled with reciprocal rank fusion (RRF) combining dense vectors and sparse BM25 tokens.
 - **Reranker**: Cohere/BGE reranker pass over the top 25 candidates to extract the highest confidence top-5 chunks.`;
-  } else if (promptLower.includes('code') || promptLower.includes('function') || promptLower.includes('react') || promptLower.includes('node')) {
-    responseText = `Here is a production-ready implementation snippet with strict type safety and error boundary handling:
-
-\`\`\`typescript
-import { createClient } from '@nexus/ai-sdk';
-
-interface ExecutionResult<T> {
-  success: boolean;
-  data?: T;
-  latencyMs: number;
-  tokensConsumed: number;
-}
-
-export async function executeAgentPipeline<T>(
-  pipelineId: string,
-  payload: Record<string, unknown>
-): Promise<ExecutionResult<T>> {
-  const startTime = performance.now();
-  try {
-    const client = createClient({ apiKey: process.env.NEXUS_API_KEY });
-    const result = await client.workflows.trigger(pipelineId, payload);
-    
-    return {
-      success: true,
-      data: result as T,
-      latencyMs: Math.round(performance.now() - startTime),
-      tokensConsumed: result.usage?.totalTokens ?? 420
-    };
-  } catch (error) {
-    console.error('[PipelineExecutionError]', error);
-    throw new Error(\`Failed to execute pipeline: \${(error as Error).message}\`);
-  }
-}
-\`\`\`
-
-Let me know if you would like me to add unit tests with mock telemetry fixtures.`;
   } else {
-    // Dynamic contextual response
     responseText = `I have analyzed your input with **${model}** (configured with temperature ${temperature}, max tokens ${maxTokens}).
 
 ${systemPrompt ? `> *System Context applied: "${systemPrompt.substring(0, 60)}..."*\n\n` : ''}Key Analysis Points:
@@ -100,8 +102,7 @@ ${systemPrompt ? `> *System Context applied: "${systemPrompt.substring(0, 60)}..
 How would you like to proceed with this task?`;
   }
 
-  // Calculate estimated tokens
-  const inputTokens = Math.ceil((lastUserMsg.length + systemPrompt.length) / 4) + 20;
+  const inputTokens = Math.ceil((lastUserMsg.length + (systemPrompt || '').length) / 4) + 20;
   const outputTokens = Math.ceil(responseText.length / 4);
   const totalTokens = inputTokens + outputTokens;
 
@@ -117,7 +118,8 @@ How would you like to proceed with this task?`;
     },
     meta: {
       finishReason: 'stop',
-      latencyMs: Math.floor(Math.random() * 120) + 85
+      latencyMs: Math.floor(Math.random() * 120) + 85,
+      costUsd: parseFloat((totalTokens * 0.000003).toFixed(6))
     }
   };
 }

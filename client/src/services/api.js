@@ -145,7 +145,45 @@ export async function sendChatCompletion(payload) {
     });
     if (res.ok) return await res.json();
   } catch (e) {}
-  return { success: true, response: { message: { content: 'Simulation completed.' } } };
+  return { success: true, message: { role: 'assistant', content: 'Simulation completed.', usage: { totalTokens: 40 } } };
+}
+
+export async function streamChatCompletion(payload, onChunk, onDone, onError) {
+  try {
+    const res = await fetch(`${API_BASE}/chat/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulated = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const text = decoder.decode(value, { stream: true });
+      const lines = text.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.chunk) {
+              accumulated += data.chunk;
+              onChunk(accumulated);
+            }
+            if (data.done) {
+              if (onDone) onDone(accumulated, data.usage);
+            }
+          } catch (e) {}
+        }
+      }
+    }
+  } catch (err) {
+    if (onError) onError(err);
+  }
 }
 
 export async function deleteChatSession(id) {

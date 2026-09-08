@@ -25,3 +25,15 @@ server/data/
 Thumbs.db
 .vscode/
 .idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+ai/data/
+ai/.env
+venv/
+.venv/
+
