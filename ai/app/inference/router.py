@@ -161,43 +161,39 @@ async def execute_chat_completion(payload: ChatCompletionRequest) -> ChatComplet
 
 
 def generate_simulated_completion(payload: ChatCompletionRequest, start_time: float) -> ChatCompletionResponse:
-    last_user_msg = ""
-    for m in reversed(payload.messages):
-        if m.role == "user":
-            last_user_msg = m.content
-            break
+    """
+    Honest offline fallback returned when no provider API key is configured or the
+    upstream LLM call failed.  Does NOT fabricate a real-looking answer; instead it
+    transparently discloses that the service is running in demo/offline mode so the
+    user knows their message was not actually processed by an LLM.
+    """
+    PROVIDER_HINTS = {
+        "gpt-4o":                     ("OPENAI_API_KEY",    "OpenAI"),
+        "claude-3-5-sonnet-20241022":  ("ANTHROPIC_API_KEY", "Anthropic"),
+        "deepseek/deepseek-reasoner":  ("DEEPSEEK_API_KEY",  "DeepSeek"),
+        "gemini/gemini-1.5-pro":      ("GEMINI_API_KEY",    "Google"),
+    }
+    target = get_target_model(payload.model)
+    env_var, provider_name = PROVIDER_HINTS.get(target, ("OPENAI_API_KEY", "the provider"))
 
-    prompt_lower = last_user_msg.lower()
-    if "workflow" in prompt_lower or "agent" in prompt_lower:
-        content = (
-            f"Based on your architecture requirements with **{payload.model}**, I recommend structuring an asynchronous agent loop with a reactive state bus.\n\n"
-            "1. **State Isolation**: Encapsulate worker state inside discrete node execution contexts.\n"
-            "2. **Backpressure & Retries**: Configure exponential backoff on external tool calls.\n"
-            "3. **Guardrails**: Validate schema output via runtime Pydantic parsing before downstream handoff."
-        )
-    elif "rag" in prompt_lower or "vector" in prompt_lower:
-        content = (
-            f"Here is an optimal RAG pipeline architecture evaluated on **{payload.model}**:\n\n"
-            "- **Ingestion**: Recursive semantic chunking (512 tokens with 64-token overlap).\n"
-            "- **Indexing**: HNSW index with cosine distance metrics.\n"
-            "- **Query Optimization**: HyDE coupled with reciprocal rank fusion (RRF)."
-        )
-    else:
-        sys_prefix = f"> *System Context applied: \"{payload.systemPrompt[:60]}...\"*\n\n" if payload.systemPrompt else ""
-        content = (
-            f"I have analyzed your input with **{payload.model}** (temperature {payload.temperature}, max tokens {payload.maxTokens}).\n\n"
-            f"{sys_prefix}"
-            f"Key Analysis Points:\n"
-            f"- **Synthesized Query**: \"{last_user_msg[:80]}...\"\n"
-            f"- **Recommended Strategy**: Implement modular orchestration with deterministic schema validation.\n"
-            f"- **Inference Routing**: Routed through LiteLLM multi-provider gateway."
-        )
+    content = (
+        "\u26a0\ufe0f **Offline / Demo Mode \u2014 no real inference was performed.**\n\n"
+        f"The **{payload.model}** model requires a valid `{env_var}` key to be set in "
+        f"`ai/.env` (or as a server environment variable).\n\n"
+        f"**To enable live responses:**\n"
+        f"1. Obtain an API key from {provider_name}.\n"
+        f"2. Add it to `ai/.env`: `{env_var}=<your-key>`\n"
+        f"3. Restart the Python AI service (`python ai/run.py`).\n\n"
+        "Your message has **not** been answered. This placeholder is shown so the UI "
+        "remains functional while the service is unconfigured."
+    )
 
-    latency_ms = int((time.time() - start_time) * 1000) + 120
-    input_tokens = max(10, len(last_user_msg.split()) * 2) + (len(payload.systemPrompt.split()) if payload.systemPrompt else 0)
-    output_tokens = max(20, len(content.split()) * 2)
+    latency_ms = int((time.time() - start_time) * 1000) + 10
+    # Count tokens from the real user input only — do NOT inflate fake usage numbers
+    user_words = " ".join(m.content for m in payload.messages if m.role == "user").split()
+    input_tokens = max(1, len(user_words))
+    output_tokens = max(1, len(content.split()))
     total_tokens = input_tokens + output_tokens
-    cost_usd = round(total_tokens * LOCAL_PRICE_PER_TOKEN.get(payload.model, 0.000003), 6)
 
     return ChatCompletionResponse(
         id=f"msg-{int(time.time() * 1000)}",
@@ -207,15 +203,14 @@ def generate_simulated_completion(payload: ChatCompletionRequest, start_time: fl
         usage=ChatUsage(
             inputTokens=input_tokens,
             outputTokens=output_tokens,
-            totalTokens=total_tokens
+            totalTokens=total_tokens,
         ),
         meta=ChatMeta(
-            finishReason="stop",
+            finishReason="offline",
             latencyMs=latency_ms,
-            costUsd=cost_usd
-        )
+            costUsd=0.0,
+        ),
     )
-
 
 async def stream_chat_completion(payload: ChatCompletionRequest) -> AsyncGenerator[str, None]:
     """

@@ -70,41 +70,30 @@ export async function generateChatResponse({ model = 'GPT-4o', messages = [], sy
   return generateLocalFallbackResponse({ model, messages, systemPrompt, temperature, maxTokens });
 }
 
-function generateLocalFallbackResponse({ model, messages, systemPrompt, temperature, maxTokens }) {
-  const lastUserMsg = messages.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
-  const promptLower = lastUserMsg.toLowerCase();
+function generateLocalFallbackResponse({ model, messages }) {
+  // Honest offline disclosure — no inference was performed.
+  // Fabricating plausible-looking answers (hallucination) is intentionally avoided here.
+  const PROVIDER_MAP = {
+    'GPT-4o':           { envVar: 'OPENAI_API_KEY',    provider: 'OpenAI' },
+    'Claude 3.5 Sonnet':{ envVar: 'ANTHROPIC_API_KEY', provider: 'Anthropic' },
+    'DeepSeek R1':      { envVar: 'DEEPSEEK_API_KEY',  provider: 'DeepSeek' },
+    'Gemini 1.5 Pro':   { envVar: 'GEMINI_API_KEY',    provider: 'Google' },
+  };
+  const { envVar = 'OPENAI_API_KEY', provider = 'the provider' } = PROVIDER_MAP[model] || {};
 
-  let responseText = '';
+  const userWords = messages.filter(m => m.role === 'user').map(m => m.content).join(' ').split(/\s+/);
+  const inputTokens = Math.max(1, userWords.length);
 
-  if (promptLower.includes('workflow') || promptLower.includes('agent')) {
-    responseText = `Based on your request, I recommend structuring an asynchronous agent loop with a reactive state bus.
+  const responseText =
+    `⚠️ **Offline / Demo Mode — no real inference was performed.**\n\n` +
+    `The **${model}** model requires a valid \`${envVar}\` key to be configured on the server.\n\n` +
+    `**To enable live responses:**\n` +
+    `1. Obtain an API key from ${provider}.\n` +
+    `2. Add it to \`ai/.env\`: \`${envVar}=<your-key>\`\n` +
+    `3. Restart the Python AI service (\`python ai/run.py\`).\n\n` +
+    `Your message has **not** been answered. This placeholder is shown so the UI remains functional while the service is unconfigured.`;
 
-1. **State Isolation**: Encapsulate worker state inside discrete node execution contexts.
-2. **Backpressure & Retries**: Configure exponential backoff (e.g. initial 200ms, multiplier 2x, max 5 attempts) on external tool calls.
-3. **Guardrails**: Validate schema output via runtime Zod/JSON Schema parsing before handing off to downstream sink actions.
-
-Would you like me to synthesize the complete JSON DAG schema for your pipeline?`;
-  } else if (promptLower.includes('rag') || promptLower.includes('vector') || promptLower.includes('embedding')) {
-    responseText = `Here is an optimal RAG pipeline architecture for high precision retrieval:
-
-- **Ingestion**: Recursive semantic chunking (target: 512 tokens with 64-token sliding window overlap).
-- **Indexing**: HNSW index with \`m=16\`, \`ef_construction=64\` using cosine distance metrics.
-- **Query Optimization**: HyDE (Hypothetical Document Embeddings) coupled with reciprocal rank fusion (RRF) combining dense vectors and sparse BM25 tokens.
-- **Reranker**: Cohere/BGE reranker pass over the top 25 candidates to extract the highest confidence top-5 chunks.`;
-  } else {
-    responseText = `I have analyzed your input with **${model}** (configured with temperature ${temperature}, max tokens ${maxTokens}).
-
-${systemPrompt ? `> *System Context applied: "${systemPrompt.substring(0, 60)}..."*\n\n` : ''}Key Analysis Points:
-- **Synthesized Query**: "${lastUserMsg.length > 80 ? lastUserMsg.substring(0, 80) + '...' : lastUserMsg}"
-- **Recommended Strategy**: Implement modular orchestration with deterministic schema validation.
-- **Latency Benchmark**: Model running with optimal throughput on cloud edge inference nodes.
-
-How would you like to proceed with this task?`;
-  }
-
-  const inputTokens = Math.ceil((lastUserMsg.length + (systemPrompt || '').length) / 4) + 20;
-  const outputTokens = Math.ceil(responseText.length / 4);
-  const totalTokens = inputTokens + outputTokens;
+  const outputTokens = Math.max(1, Math.ceil(responseText.length / 4));
 
   return {
     id: `msg-${Date.now()}`,
@@ -114,13 +103,13 @@ How would you like to proceed with this task?`;
     usage: {
       inputTokens,
       outputTokens,
-      totalTokens
+      totalTokens: inputTokens + outputTokens,
     },
     meta: {
-      finishReason: 'stop',
-      latencyMs: Math.floor(Math.random() * 120) + 85,
-      costUsd: parseFloat((totalTokens * 0.000003).toFixed(6))
-    }
+      finishReason: 'offline',
+      latencyMs: 0,
+      costUsd: 0,
+    },
   };
 }
 

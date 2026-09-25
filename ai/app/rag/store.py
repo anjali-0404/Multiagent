@@ -181,7 +181,7 @@ class VectorStoreManager:
                 "chunkIndex": idx,
                 "text": chunk.text,
                 "snippet": snippet,
-                "vectorModel": "text-embedding-3-large"
+                "vectorModel": "forge-hash-v1"
             }
             points.append(PointStruct(id=point_id, vector=vector, payload=payload))
 
@@ -239,7 +239,7 @@ class VectorStoreManager:
                 category=p.get("category", "General"),
                 similarityScore=normalized_score,
                 snippet=p.get("snippet", p.get("text", "")[:180] + "..."),
-                vectorModel=p.get("vectorModel", "text-embedding-3-large")
+                vectorModel=p.get("vectorModel", "forge-hash-v1")
             ))
             seen_docs.add(doc_id)
 
