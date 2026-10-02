@@ -47,35 +47,8 @@ async def run_research_agent(goal: str, requirements: Dict[str, Any], category: 
         except Exception as e:
             logger.warning(f"Research live LLM call failed ({e}). Using deterministic stack selection.")
 
-    # Contextual tech stack evaluation
-    is_mobile = category == "mobile"
-    is_backend = category == "backend"
-
-    stack = [
-        TechStackItem(
-            layer="Frontend / Client",
-            technology="React 18 + Vite + Tailwind CSS" if not is_mobile else "React Native + Expo",
-            rationale="Sub-second HMR development loop, component reusability, and minimal bundle size."
-        ),
-        TechStackItem(
-            layer="Backend API Gateway",
-            technology="Node.js Express (ESM) + Async Middleware",
-            rationale="High concurrent I/O throughput, non-blocking event loop, and low cold-start latency."
-        ),
-        TechStackItem(
-            layer="AI Microservice Engine",
-            technology="Python 3.14 + FastAPI + LiteLLM + LangGraph",
-            rationale="Multi-provider LLM abstraction, asynchronous durable workflows, and native Pydantic typing."
-        ),
-        TechStackItem(
-            layer="Vector & Relational Storage",
-            technology="PostgreSQL 16 with pgvector + Qdrant",
-            rationale="Single ACID database layer with native cosine similarity vector indexing."
-        ),
-        TechStackItem(
-            layer="DevOps & Deployment",
-            technology="Docker + GitHub Actions + Render Web Services",
-            rationale="Deterministic container builds, automated branch testing, and continuous zero-downtime deployment."
-        )
-    ]
-    return [item.model_dump() for item in stack]
+    # No provider credentials available — cannot perform real tech-stack research.
+    raise RuntimeError(
+        "Research Agent requires a configured LLM provider API key (OPENAI_API_KEY or "
+        "ANTHROPIC_API_KEY). Add the key to ai/.env and restart the service."
+    )

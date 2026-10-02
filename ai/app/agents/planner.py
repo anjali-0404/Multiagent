@@ -51,52 +51,8 @@ async def run_planner_agent(
         except Exception as e:
             logger.warning(f"Planner live LLM call failed ({e}). Using deterministic task plan.")
 
-    # Contextual sprint task decomposition
-    tasks = [
-        BlueprintTask(
-            id=1,
-            title="Design authentication & RBAC user schema",
-            tag="Auth",
-            priority="High",
-            status="Done",
-            description="Implement JWT issuance, refresh rotation, and password hashing in PostgreSQL.",
-            assignedAgent="Architect Agent"
-        ),
-        BlueprintTask(
-            id=2,
-            title="Implement domain REST CRUD endpoints",
-            tag="Backend",
-            priority="High",
-            status="In Progress",
-            description="Build robust CRUD API with input validation boundaries and error handlers.",
-            assignedAgent="Builder Agent"
-        ),
-        BlueprintTask(
-            id=3,
-            title="Build interactive dashboard and telemetry view",
-            tag="UI",
-            priority="Medium",
-            status="In Progress",
-            description="Construct responsive React dashboard with live KPI charts and activity log feeds.",
-            assignedAgent="Builder Agent"
-        ),
-        BlueprintTask(
-            id=4,
-            title="Integrate Qdrant vector semantic search and RAG",
-            tag="AI",
-            priority="Medium",
-            status="To Do",
-            description="Index knowledge base chunks and integrate vector cosine similarity search.",
-            assignedAgent="Builder Agent"
-        ),
-        BlueprintTask(
-            id=5,
-            title="Configure automated testing suite and CI/CD workflow",
-            tag="DevOps",
-            priority="Low",
-            status="To Do",
-            description="Setup GitHub Actions workflow with unit tests, linting, and staging deployment.",
-            assignedAgent="QA Agent"
-        )
-    ]
-    return [t.model_dump() for t in tasks]
+    # No provider credentials available — cannot perform real task decomposition.
+    raise RuntimeError(
+        "Planner Agent requires a configured LLM provider API key (OPENAI_API_KEY or "
+        "ANTHROPIC_API_KEY). Add the key to ai/.env and restart the service."
+    )

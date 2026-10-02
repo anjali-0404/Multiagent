@@ -54,28 +54,8 @@ async def run_architect_agent(
         except Exception as e:
             logger.warning(f"Architect live LLM call failed ({e}). Using deterministic architecture synthesis.")
 
-    # Contextual architecture synthesis
-    tables = ["users", "sessions", "projects", "records", "analytics_daily", "activity_logs"]
-    endpoints = [
-        {"path": "/api/auth/login", "method": "POST", "description": "Issue JWT token on user authentication"},
-        {"path": "/api/auth/me", "method": "GET", "description": "Fetch current authenticated user profile"},
-        {"path": "/api/records", "method": "GET", "description": "List domain records with pagination and filters"},
-        {"path": "/api/records", "method": "POST", "description": "Create new record with schema validation"},
-        {"path": "/api/analytics/metrics", "method": "GET", "description": "Aggregated telemetry and KPI metrics"}
-    ]
-    decisions = [
-        "FastAPI microservice seam for asynchronous Python AI pipelines",
-        "Unified PostgreSQL relational storage with pgvector for zero extra database operational overhead",
-        "Stateless JWT authorization headers with refresh token rotation",
-        "Optimistic concurrency control on high-contention record updates",
-        "Client-side reactive state store with optimistic UI cache updates"
-    ]
-
-    arch = BlueprintArchitecture(
-        topology="Reactive Three-Tier Microservice Architecture (Client -> Node Gateway -> Python AI Engine)",
-        techStack=[TechStackItem(**item) for item in tech_stack],
-        dbSchema={"tables": tables, "relations": ["users 1:N projects", "projects 1:N records", "records 1:N activity_logs"]},
-        apiEndpoints=endpoints,
-        keyDecisions=decisions
+    # No provider credentials available — cannot perform real architecture synthesis.
+    raise RuntimeError(
+        "Architect Agent requires a configured LLM provider API key (OPENAI_API_KEY or "
+        "ANTHROPIC_API_KEY). Add the key to ai/.env and restart the service."
     )
-    return arch.model_dump()

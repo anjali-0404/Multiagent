@@ -46,23 +46,10 @@ async def run_analyst_agent(goal: str, category: str = "web") -> Dict[str, Any]:
         except Exception as e:
             logger.warning(f"Analyst live LLM call failed ({e}). Using deterministic domain analysis.")
 
-    # Contextual fallback analysis based on goal
-    return BlueprintRequirements(
-        summary=f"Automated requirement specification for {goal[:80]}",
-        personas=[
-            "Primary End User (Students / Individuals)",
-            "System Administrator / Platform Owner",
-            "Data & Security Auditor"
-        ],
-        functional=[
-            f"User account lifecycle and authentication for {goal.split()[0]}",
-            "Automated activity categorization and persistent storage",
-            "Dynamic analytics dashboard with visual metrics",
-            "Real-time alerts, notifications, and telemetry logging"
-        ],
-        nonFunctional=[
-            "p95 API response latency under 200ms",
-            "Strict cryptographic hashing and session token verification",
-            "Zero-downtime microservice architecture with automated retries"
-        ]
-    ).model_dump()
+    # No provider credentials available — cannot perform real analysis.
+    # Raising so the job pipeline marks the run 'failed' with an honest error
+    # rather than silently returning fabricated requirements.
+    raise RuntimeError(
+        "Analyst Agent requires a configured LLM provider API key (OPENAI_API_KEY or "
+        "ANTHROPIC_API_KEY). Add the key to ai/.env and restart the service."
+    )

@@ -269,14 +269,11 @@ async def stream_chat_completion(payload: ChatCompletionRequest) -> AsyncGenerat
         except Exception as e:
             logger.warning(f"Streaming failed for {target_model}: {e}. Falling back to chunked simulation.")
 
-    # Simulated token-by-token stream fallback
+    # Offline disclosure — send in one shot. No fake typing delays.
     res = generate_simulated_completion(payload, time.time())
-    words = res.content.split(" ")
-    for word in words:
-        chunk_data = json.dumps({"chunk": word + " ", "done": False})
-        yield f"data: {chunk_data}\n\n"
-        # Micro pause to simulate streaming typing without blocking loop
-        await asyncio.sleep(0.002)
+    # Emit the full disclosure as a single chunk so it's clearly not real inference
+    chunk_data = json.dumps({"chunk": res.content, "done": False})
+    yield f"data: {chunk_data}\n\n"
 
     final_data = json.dumps({
         "chunk": "",
