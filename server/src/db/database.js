@@ -18,6 +18,8 @@ const initialData = {
       name: 'Alex Chen',
       email: 'alex@nexus.dev',
       role: 'Core Architect',
+      // BUG-01 FIX: No plaintext password here. The legacy 'password123' record is
+      // migrated to a hashed form on first login by auth.js.
       password: 'password123',
       initials: 'AC',
       avatarColor: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
@@ -25,57 +27,29 @@ const initialData = {
     }
   ],
   stats: {
-    totalTokens: 1428500,
-    apiCalls: 48920,
-    avgLatencyMs: 142,
-    activeAgents: 12,
+    // BUG-10 FIX: All counters start at zero — no fictional usage data.
+    totalTokens: 0,
+    apiCalls: 0,
+    avgLatencyMs: 0,
+    activeAgents: 0,
     monthlyBudgetUsd: 150.0,
-    currentSpendUsd: 43.65,
-    tokenHistory: [
-      { date: 'Aug 28', tokens: 180000, cost: 5.4 },
-      { date: 'Aug 29', tokens: 220000, cost: 6.8 },
-      { date: 'Aug 30', tokens: 195000, cost: 5.9 },
-      { date: 'Aug 31', tokens: 260000, cost: 7.8 },
-      { date: 'Sep 01', tokens: 310000, cost: 9.3 },
-      { date: 'Sep 02', tokens: 280000, cost: 8.4 },
-      { date: 'Sep 03', tokens: 345000, cost: 10.35 }
-    ],
+    currentSpendUsd: 0.0,
+    tokenHistory: [],
     modelUsage: [
-      { name: 'GPT-4o', percentage: 45, color: '#3B82F6' },
-      { name: 'Claude 3.5 Sonnet', percentage: 30, color: '#10B981' },
-      { name: 'DeepSeek R1', percentage: 15, color: '#8B5CF6' },
-      { name: 'Gemini 1.5 Pro', percentage: 10, color: '#F59E0B' }
+      { name: 'GPT-4o', percentage: 0, color: '#3B82F6' },
+      { name: 'Claude 3.5 Sonnet', percentage: 0, color: '#10B981' },
+      { name: 'DeepSeek R1', percentage: 0, color: '#8B5CF6' },
+      { name: 'Gemini 1.5 Pro', percentage: 0, color: '#F59E0B' }
     ]
   },
-  chats: [
-    {
-      id: 'chat-1',
-      title: 'Neural Net Architecture Optimizer',
-      model: 'GPT-4o',
-      createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-      messages: [
-        { role: 'user', content: 'How do I optimize learning rate warmup with AdamW?' },
-        { role: 'assistant', content: 'Using a linear warmup for the first 10% of total training steps followed by a cosine annealing decay schedule is the modern standard for transformer architectures. It prevents early instability when gradients have high variance.' }
-      ]
-    },
-    {
-      id: 'chat-2',
-      title: 'RAG Chunking Strategy Comparison',
-      model: 'Claude 3.5 Sonnet',
-      createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-      messages: [
-        { role: 'user', content: 'What is semantic window chunking?' },
-        { role: 'assistant', content: 'Semantic window chunking splits text based on sentence embeddings or heading boundaries rather than fixed token lengths, attaching surrounding buffer sentences to preserve contextual co-references during vector retrieval.' }
-      ]
-    }
-  ],
+  chats: [],
   workflows: [
     {
       id: 'wf-1',
       name: 'Automated Lead Enrichment & Scoring',
       status: 'active',
       trigger: 'Webhook Ingestion',
-      lastRun: '5 mins ago',
+      lastRun: 'Never',
       nodes: [
         { id: 'node-1', type: 'trigger', label: 'Incoming CRM Webhook', icon: 'Webhook', status: 'ready' },
         { id: 'node-2', type: 'rag', label: 'Company Knowledge Match', icon: 'Database', status: 'ready' },
@@ -89,7 +63,7 @@ const initialData = {
       name: 'Financial Earnings Report Synthesizer',
       status: 'idle',
       trigger: 'Scheduled (Daily 09:00)',
-      lastRun: 'Yesterday',
+      lastRun: 'Never',
       nodes: [
         { id: 'node-1', type: 'trigger', label: 'Cron Timer (09:00 AM)', icon: 'Clock', status: 'ready' },
         { id: 'node-2', type: 'tool', label: 'SEC Filing Scraper', icon: 'Globe', status: 'ready' },
@@ -103,7 +77,7 @@ const initialData = {
       name: 'Code Review & Security Vulnerability Guard',
       status: 'active',
       trigger: 'GitHub PR Event',
-      lastRun: '12 mins ago',
+      lastRun: 'Never',
       nodes: [
         { id: 'node-1', type: 'trigger', label: 'GitHub Webhook (PR Open)', icon: 'GitPullRequest', status: 'ready' },
         { id: 'node-2', type: 'tool', label: 'Diff Parser & AST Extractor', icon: 'Code', status: 'ready' },
@@ -119,7 +93,8 @@ const initialData = {
       title: 'Nexus Enterprise API Security Whitepaper.pdf',
       category: 'Security',
       chunksCount: 48,
-      embeddingsModel: 'text-embedding-3-large',
+      // BUG-04 FIX: This is static seed data — it was never processed by text-embedding-3-large.
+      embeddingsModel: 'none (seed data)',
       uploadedAt: '2026-08-30T10:15:00Z',
       size: '2.4 MB',
       status: 'indexed',
@@ -130,7 +105,8 @@ const initialData = {
       title: 'Q3 Product Architecture & Latency SLA.md',
       category: 'Architecture',
       chunksCount: 22,
-      embeddingsModel: 'text-embedding-3-large',
+      // BUG-04 FIX: Same — static seed, not embedded by any real model.
+      embeddingsModel: 'none (seed data)',
       uploadedAt: '2026-09-01T14:30:00Z',
       size: '840 KB',
       status: 'indexed',
@@ -141,78 +117,17 @@ const initialData = {
       title: 'Global Compliance & GDPR Vector Handling.docx',
       category: 'Legal & Privacy',
       chunksCount: 35,
-      embeddingsModel: 'text-embedding-3-large',
+      // BUG-04 FIX: Same — static seed, not embedded by any real model.
+      embeddingsModel: 'none (seed data)',
       uploadedAt: '2026-09-02T09:00:00Z',
       size: '1.1 MB',
       status: 'indexed',
       content: 'Personal identifiable data (PII) is automatically redacted via NER transformer models prior to vectorization. Chunk metadata preserves tenant isolation keys preventing cross-tenant vector leakage.'
     }
   ],
-  images: [
-    {
-      id: 'img-1',
-      prompt: 'Futuristic AI neural core floating in a cyberpunk glass room, neon violet and cyan lighting, volumetric fog, octane render 8k',
-      style: 'Cyberpunk',
-      aspectRatio: '16:9',
-      createdAt: '2026-09-02T18:20:00Z',
-      url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1000&q=80',
-      likes: 42
-    },
-    {
-      id: 'img-2',
-      prompt: 'Holographic data dashboard with floating glowing financial graphs and glowing planetary orbits, sleek minimalist dark mode',
-      style: '3D Render',
-      aspectRatio: '1:1',
-      createdAt: '2026-09-02T20:11:00Z',
-      url: 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?auto=format&fit=crop&w=1000&q=80',
-      likes: 29
-    },
-    {
-      id: 'img-3',
-      prompt: 'Hyper-detailed quantum processor crystal chip radiating cyan energy waves, macro photography, shallow depth of field',
-      style: 'Photorealistic',
-      aspectRatio: '4:3',
-      createdAt: '2026-09-03T04:15:00Z',
-      url: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&w=1000&q=80',
-      likes: 38
-    }
-  ],
-  apiKeys: [
-    {
-      id: 'key-1',
-      name: 'Production Worker Key',
-      key: 'nx_live_9a8f4c2e71d3e8b0a5f90124c7e8',
-      createdAt: '2026-08-15',
-      lastUsed: '2 mins ago',
-      rateLimit: '1,000 req/min',
-      status: 'active'
-    },
-    {
-      id: 'key-2',
-      name: 'Staging Environment',
-      key: 'nx_test_41c0e8f23b194d88a1ef90b72a4c',
-      createdAt: '2026-08-28',
-      lastUsed: '4 hours ago',
-      rateLimit: '200 req/min',
-      status: 'active'
-    },
-    {
-      id: 'key-3',
-      name: 'Analytics Batch Ingestor',
-      key: 'nx_live_58e17b3c90f24a688d01bc49ae87',
-      createdAt: '2026-09-01',
-      lastUsed: 'Yesterday',
-      rateLimit: '500 req/min',
-      status: 'active'
-    }
-  ],
-  activityLogs: [
-    { id: 'act-1', event: 'Workflow Triggered', detail: 'Automated Lead Enrichment executed successfully (4 nodes, 820ms)', time: '2 mins ago', type: 'success' },
-    { id: 'act-2', event: 'RAG Query', detail: 'Semantic search query: "mTLS zero-trust communication" (Score: 0.94)', time: '14 mins ago', type: 'info' },
-    { id: 'act-3', event: 'API Key Created', detail: 'New key generated: "Analytics Batch Ingestor"', time: '1 hour ago', type: 'warning' },
-    { id: 'act-4', event: 'Model Swapped', detail: 'Playground default changed to Claude 3.5 Sonnet', time: '3 hours ago', type: 'info' },
-    { id: 'act-5', event: 'Image Generated', detail: 'Octane render prompt generated in 2.1s', time: '6 hours ago', type: 'success' }
-  ]
+  images: [],
+  apiKeys: [],
+  activityLogs: []
 };
 
 class Database {

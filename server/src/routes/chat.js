@@ -33,11 +33,14 @@ router.post('/completions', async (req, res) => {
     });
 
     // Update database tokens & API call stats
+    // BUG-06 FIX: Use the actual cost returned by the Python service (model-specific pricing)
+    // instead of a hardcoded 0.000003/token rate that is wrong for all models except Claude.
+    const realCostUsd = response.meta?.costUsd ?? (response.usage.totalTokens * 0.000003);
     const stats = db.getStats();
     db.updateStats({
       totalTokens: stats.totalTokens + response.usage.totalTokens,
       apiCalls: stats.apiCalls + 1,
-      currentSpendUsd: parseFloat((stats.currentSpendUsd + (response.usage.totalTokens * 0.000003)).toFixed(4))
+      currentSpendUsd: parseFloat((stats.currentSpendUsd + realCostUsd).toFixed(6))
     });
 
     // Save or update chat session

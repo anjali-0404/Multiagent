@@ -78,10 +78,13 @@ async def execute_workflow_dag(workflow_data: WorkflowRunRequest) -> WorkflowRun
             context_accumulator += f"\nLLM Output: {llm_res.content[:200]}"
 
         elif node_type == "tool":
-            logs.append(f"[{log_time()}] [TOOL] Dispatched external connector request for '{node_label}'. HTTP 200 OK received.")
+            # BUG-07 FIX: No real HTTP call is made here. Logging an honest notice
+            # instead of fabricating "200 OK received" which never happened.
+            logs.append(f"[{log_time()}] [TOOL] Node '{node_label}': no external connector configured. Skipped.")
 
         elif node_type == "action":
-            logs.append(f"[{log_time()}] [ACTION] Outbound webhook payload delivered successfully. Response status: 200 OK.")
+            # BUG-07 FIX: Same — no webhook is dispatched. Honest placeholder log.
+            logs.append(f"[{log_time()}] [ACTION] Node '{node_label}': no outbound connector configured. Skipped.")
 
     duration_ms = int((time.time() - start_time) * 1000)
     logs.append(f"[{log_time()}] [SUCCESS] Pipeline execution completed in {duration_ms}ms. Consumed {total_tokens} tokens. Status: 0 errors.")

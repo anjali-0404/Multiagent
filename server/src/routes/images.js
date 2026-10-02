@@ -47,22 +47,19 @@ router.post('/generate', async (req, res) => {
       aspectRatio,
       createdAt: new Date().toISOString(),
       url: selectedUrl,
-      likes: Math.floor(Math.random() * 15) + 1
+      // BUG-05 FIX: Mark as placeholder so the UI and any consumers can distinguish
+      // this stock photo from a real model-generated image.
+      isPlaceholder: true,
+      likes: 0
     };
 
     db.addImage(newImage);
 
-    // Update stats
-    const stats = db.getStats();
-    db.updateStats({
-      apiCalls: stats.apiCalls + 1,
-      totalTokens: stats.totalTokens + 1200
-    });
-
+    // BUG-05 FIX: No model ran — do not bill fake tokens or claim inference occurred.
     db.logActivity({
-      event: 'Image Synthesized',
-      detail: `Generated "${prompt.slice(0, 32)}..." in style [${style}]`,
-      type: 'success'
+      event: 'Image Placeholder Saved',
+      detail: `Saved stock placeholder for prompt "${prompt.slice(0, 32)}..." [${style}]. Connect an image API (DALL-E / Imagen) for real generation.`,
+      type: 'info'
     });
 
     res.json({ success: true, image: newImage });

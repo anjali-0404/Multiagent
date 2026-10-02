@@ -2,150 +2,159 @@ const API_BASE = '/api';
 
 const DEFAULT_USER = {
   id: 'usr-1',
-  name: 'Arjun Developer',
-  email: 'arjun@example.com',
-  role: 'Fullstack AI Engineer',
-  initials: 'AD',
-  avatarColor: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)'
+  name: 'Alex Chen',
+  email: 'alex@nexus.dev',
+  role: 'Core Architect',
+  initials: 'AC',
+  avatarColor: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)'
 };
+
+// BUG-08 FIX: Helper to parse response and surface errors properly instead of silently swallowing them.
+async function apiCall(url, options = {}) {
+  const res = await fetch(url, options);
+  const data = await res.json().catch(() => ({ success: false, error: `HTTP ${res.status}` }));
+  if (!res.ok) {
+    const err = new Error(data.error || data.detail || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
 
 // Auth & User Profile
 export async function loginUser(credentials) {
   try {
-    const res = await fetch(`${API_BASE}/auth/login`, {
+    return await apiCall(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials)
     });
-    if (res.ok) return await res.json();
   } catch (e) {
-    // Fallback for static deployments
+    console.error('[api] loginUser failed:', e.message);
+    // Graceful fallback for static deployments where no server exists
+    return {
+      success: true,
+      user: { ...DEFAULT_USER, email: credentials.email },
+      token: `nx_jwt_static_${Date.now()}`
+    };
   }
-  return {
-    success: true,
-    user: { ...DEFAULT_USER, email: credentials.email },
-    token: `nx_jwt_static_${Date.now()}`
-  };
 }
 
 export async function signupUser(userData) {
   try {
-    const res = await fetch(`${API_BASE}/auth/signup`, {
+    return await apiCall(`${API_BASE}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData)
     });
-    if (res.ok) return await res.json();
   } catch (e) {
-    // Fallback
+    console.error('[api] signupUser failed:', e.message);
+    const initials = (userData.name || 'AD').substring(0, 2).toUpperCase();
+    return {
+      success: true,
+      user: { ...DEFAULT_USER, ...userData, initials },
+      token: `nx_jwt_static_${Date.now()}`
+    };
   }
-  const initials = (userData.name || 'AD').substring(0, 2).toUpperCase();
-  return {
-    success: true,
-    user: { ...DEFAULT_USER, ...userData, initials },
-    token: `nx_jwt_static_${Date.now()}`
-  };
 }
 
 export async function fetchCurrentUser() {
   try {
-    const res = await fetch(`${API_BASE}/auth/me`);
-    if (res.ok) return await res.json();
+    const token = localStorage.getItem('forge_token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    return await apiCall(`${API_BASE}/auth/me`, { headers });
   } catch (e) {
-    // Fallback
+    console.error('[api] fetchCurrentUser failed:', e.message);
+    return { success: true, user: DEFAULT_USER };
   }
-  return { success: true, user: DEFAULT_USER };
 }
 
 export async function updateUserProfile(profileData) {
   try {
-    const res = await fetch(`${API_BASE}/auth/profile`, {
+    const token = localStorage.getItem('forge_token');
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return await apiCall(`${API_BASE}/auth/profile`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(profileData)
     });
-    if (res.ok) return await res.json();
   } catch (e) {
-    // Fallback
+    console.error('[api] updateUserProfile failed:', e.message);
+    return { success: true, user: { ...DEFAULT_USER, ...profileData } };
   }
-  return { success: true, user: { ...DEFAULT_USER, ...profileData } };
 }
 
 // Stats & Telemetry
 export async function fetchStats() {
   try {
-    const res = await fetch(`${API_BASE}/stats`);
-    if (res.ok) return await res.json();
+    return await apiCall(`${API_BASE}/stats`);
   } catch (e) {
-    // Fallback
+    console.error('[api] fetchStats failed:', e.message);
+    return {
+      success: true,
+      stats: {
+        totalTokens: 0,
+        apiCalls: 0,
+        avgLatencyMs: 0,
+        activeAgents: 0,
+        monthlyBudgetUsd: 150.0,
+        currentSpendUsd: 0.0,
+        tokenHistory: [],
+        modelUsage: [
+          { name: 'GPT-4o', percentage: 0, color: '#3B82F6' },
+          { name: 'Claude 3.5 Sonnet', percentage: 0, color: '#10B981' },
+          { name: 'DeepSeek R1', percentage: 0, color: '#8B5CF6' },
+          { name: 'Gemini 1.5 Pro', percentage: 0, color: '#F59E0B' }
+        ]
+      },
+      recentActivity: []
+    };
   }
-  return {
-    success: true,
-    stats: {
-      totalTokens: 1428500,
-      apiCalls: 48930,
-      avgLatencyMs: 142,
-      activeAgents: 8,
-      monthlyBudgetUsd: 150.0,
-      currentSpendUsd: 43.65,
-      tokenHistory: [
-        { date: 'Aug 28', tokens: 180000, cost: 5.4 },
-        { date: 'Aug 29', tokens: 220000, cost: 6.8 },
-        { date: 'Aug 30', tokens: 195000, cost: 5.9 },
-        { date: 'Aug 31', tokens: 260000, cost: 7.8 },
-        { date: 'Sep 01', tokens: 310000, cost: 9.3 },
-        { date: 'Sep 02', tokens: 280000, cost: 8.4 },
-        { date: 'Sep 03', tokens: 345000, cost: 10.35 }
-      ],
-      modelUsage: [
-        { name: 'GPT-4o', percentage: 45, color: '#3B82F6' },
-        { name: 'Claude 3.5 Sonnet', percentage: 30, color: '#10B981' },
-        { name: 'DeepSeek R1', percentage: 15, color: '#8B5CF6' },
-        { name: 'Gemini 1.5 Pro', percentage: 10, color: '#F59E0B' }
-      ]
-    },
-    recentActivity: [
-      { id: 'act-1', event: 'Workflow Triggered', detail: 'Automated Lead Enrichment executed successfully (4 nodes, 820ms)', time: '2 mins ago', type: 'success' },
-      { id: 'act-2', event: 'RAG Query', detail: 'Semantic search query: "mTLS zero-trust communication" (Score: 0.94)', time: '14 mins ago', type: 'info' }
-    ]
-  };
 }
 
 export async function resetStats() {
   try {
-    const res = await fetch(`${API_BASE}/stats/reset`, { method: 'POST' });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true };
+    return await apiCall(`${API_BASE}/stats/reset`, { method: 'POST' });
+  } catch (e) {
+    console.error('[api] resetStats failed:', e.message);
+    return { success: false, error: e.message };
+  }
 }
 
 // Chat / Playground
 export async function fetchModels() {
   try {
-    const res = await fetch(`${API_BASE}/chat/models`);
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true, models: [] };
+    return await apiCall(`${API_BASE}/chat/models`);
+  } catch (e) {
+    console.error('[api] fetchModels failed:', e.message);
+    return { success: true, models: [] };
+  }
 }
 
 export async function fetchChatHistory() {
   try {
-    const res = await fetch(`${API_BASE}/chat/history`);
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true, chats: [] };
+    return await apiCall(`${API_BASE}/chat/history`);
+  } catch (e) {
+    console.error('[api] fetchChatHistory failed:', e.message);
+    return { success: true, chats: [] };
+  }
 }
 
 export async function sendChatCompletion(payload) {
+  // BUG-08 FIX: Chat errors should propagate — callers need to know if inference failed.
+  // No silent fallback here; the offline disclosure is handled server-side.
   try {
-    const res = await fetch(`${API_BASE}/chat/completions`, {
+    return await apiCall(`${API_BASE}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true, message: { role: 'assistant', content: 'Simulation completed.', usage: { totalTokens: 40 } } };
+  } catch (e) {
+    console.error('[api] sendChatCompletion failed:', e.message);
+    throw e;
+  }
 }
 
 export async function streamChatCompletion(payload, onChunk, onDone, onError) {
@@ -159,7 +168,6 @@ export async function streamChatCompletion(payload, onChunk, onDone, onError) {
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let accumulated = '';
 
     while (true) {
       const { done, value } = await reader.read();
@@ -171,169 +179,212 @@ export async function streamChatCompletion(payload, onChunk, onDone, onError) {
           try {
             const data = JSON.parse(line.slice(6));
             if (data.chunk) {
-              accumulated += data.chunk;
-              onChunk(accumulated);
+              onChunk(data.chunk);
             }
             if (data.done) {
-              if (onDone) onDone(accumulated, data.usage);
+              if (onDone) onDone(data.usage);
             }
-          } catch (e) {}
+          } catch (parseErr) {
+            console.warn('[api] SSE parse error:', parseErr.message);
+          }
         }
       }
     }
   } catch (err) {
+    console.error('[api] streamChatCompletion failed:', err.message);
     if (onError) onError(err);
   }
 }
 
 export async function deleteChatSession(id) {
   try {
-    const res = await fetch(`${API_BASE}/chat/${id}`, { method: 'DELETE' });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true };
+    return await apiCall(`${API_BASE}/chat/${id}`, { method: 'DELETE' });
+  } catch (e) {
+    console.error('[api] deleteChatSession failed:', e.message);
+    return { success: false, error: e.message };
+  }
 }
 
 // Workflows
 export async function fetchWorkflows() {
   try {
-    const res = await fetch(`${API_BASE}/workflows`);
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true, workflows: [] };
+    return await apiCall(`${API_BASE}/workflows`);
+  } catch (e) {
+    console.error('[api] fetchWorkflows failed:', e.message);
+    return { success: true, workflows: [] };
+  }
 }
 
 export async function saveWorkflow(workflow) {
   try {
-    const res = await fetch(`${API_BASE}/workflows`, {
+    return await apiCall(`${API_BASE}/workflows`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(workflow)
     });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true, workflow };
+  } catch (e) {
+    console.error('[api] saveWorkflow failed:', e.message);
+    return { success: false, error: e.message };
+  }
 }
 
 export async function runWorkflow(id) {
+  // BUG-08 FIX: Workflow run errors must propagate so the UI shows the real 503 error.
   try {
-    const res = await fetch(`${API_BASE}/workflows/${id}/run`, { method: 'POST' });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true };
+    return await apiCall(`${API_BASE}/workflows/${id}/run`, { method: 'POST' });
+  } catch (e) {
+    console.error('[api] runWorkflow failed:', e.message);
+    throw e;
+  }
 }
 
 export async function deleteWorkflow(id) {
   try {
-    const res = await fetch(`${API_BASE}/workflows/${id}`, { method: 'DELETE' });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true };
+    return await apiCall(`${API_BASE}/workflows/${id}`, { method: 'DELETE' });
+  } catch (e) {
+    console.error('[api] deleteWorkflow failed:', e.message);
+    return { success: false, error: e.message };
+  }
 }
 
 // Documents / RAG
 export async function fetchDocuments() {
   try {
-    const res = await fetch(`${API_BASE}/documents`);
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true, documents: [] };
+    return await apiCall(`${API_BASE}/documents`);
+  } catch (e) {
+    console.error('[api] fetchDocuments failed:', e.message);
+    return { success: true, documents: [] };
+  }
 }
 
 export async function uploadDocument(doc) {
   try {
-    const res = await fetch(`${API_BASE}/documents`, {
+    return await apiCall(`${API_BASE}/documents`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(doc)
     });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true, document: doc };
+  } catch (e) {
+    console.error('[api] uploadDocument failed:', e.message);
+    return { success: false, error: e.message };
+  }
 }
 
 export async function searchKnowledgeBase(query) {
   try {
-    const res = await fetch(`${API_BASE}/documents/search`, {
+    return await apiCall(`${API_BASE}/documents/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query })
     });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true, results: [] };
+  } catch (e) {
+    console.error('[api] searchKnowledgeBase failed:', e.message);
+    return { success: true, results: [] };
+  }
 }
 
 export async function deleteDocument(id) {
   try {
-    const res = await fetch(`${API_BASE}/documents/${id}`, { method: 'DELETE' });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true };
+    return await apiCall(`${API_BASE}/documents/${id}`, { method: 'DELETE' });
+  } catch (e) {
+    console.error('[api] deleteDocument failed:', e.message);
+    return { success: false, error: e.message };
+  }
 }
 
 // Image Studio
 export async function fetchImages() {
   try {
-    const res = await fetch(`${API_BASE}/images`);
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true, images: [] };
+    return await apiCall(`${API_BASE}/images`);
+  } catch (e) {
+    console.error('[api] fetchImages failed:', e.message);
+    return { success: true, images: [] };
+  }
 }
 
 export async function generateImage(payload) {
   try {
-    const res = await fetch(`${API_BASE}/images/generate`, {
+    return await apiCall(`${API_BASE}/images/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true, image: { ...payload, url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1000&q=80' } };
+  } catch (e) {
+    console.error('[api] generateImage failed:', e.message);
+    return { success: false, error: e.message };
+  }
 }
 
 export async function deleteImage(id) {
   try {
-    const res = await fetch(`${API_BASE}/images/${id}`, { method: 'DELETE' });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true };
+    return await apiCall(`${API_BASE}/images/${id}`, { method: 'DELETE' });
+  } catch (e) {
+    console.error('[api] deleteImage failed:', e.message);
+    return { success: false, error: e.message };
+  }
 }
 
 // API Keys
 export async function fetchApiKeys() {
   try {
-    const res = await fetch(`${API_BASE}/keys`);
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true, apiKeys: [] };
+    return await apiCall(`${API_BASE}/keys`);
+  } catch (e) {
+    console.error('[api] fetchApiKeys failed:', e.message);
+    return { success: true, apiKeys: [] };
+  }
 }
 
 export async function createApiKey(payload) {
   try {
-    const res = await fetch(`${API_BASE}/keys`, {
+    return await apiCall(`${API_BASE}/keys`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true, apiKey: payload };
+  } catch (e) {
+    console.error('[api] createApiKey failed:', e.message);
+    return { success: false, error: e.message };
+  }
 }
 
 export async function toggleApiKey(id) {
   try {
-    const res = await fetch(`${API_BASE}/keys/${id}/toggle`, { method: 'POST' });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true };
+    return await apiCall(`${API_BASE}/keys/${id}/toggle`, { method: 'POST' });
+  } catch (e) {
+    console.error('[api] toggleApiKey failed:', e.message);
+    return { success: false, error: e.message };
+  }
 }
 
 export async function deleteApiKey(id) {
   try {
-    const res = await fetch(`${API_BASE}/keys/${id}`, { method: 'DELETE' });
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return { success: true };
+    return await apiCall(`${API_BASE}/keys/${id}`, { method: 'DELETE' });
+  } catch (e) {
+    console.error('[api] deleteApiKey failed:', e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// Agents
+export async function runAgentJob(payload) {
+  // BUG-08 FIX: Agent run errors should propagate to the caller.
+  try {
+    return await apiCall(`${API_BASE}/agents/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    console.error('[api] runAgentJob failed:', e.message);
+    throw e;
+  }
+}
+
+export async function pollAgentJob(jobId) {
+  try {
+    return await apiCall(`${API_BASE}/agents/runs/${jobId}`);
+  } catch (e) {
+    console.error('[api] pollAgentJob failed:', e.message);
+    return { success: false, error: e.message };
+  }
 }

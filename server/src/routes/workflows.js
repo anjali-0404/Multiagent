@@ -56,7 +56,7 @@ router.post('/:id/run', async (req, res) => {
 
     let resultLogs = [];
     let durationMs = 0;
-    let tokensConsumed = 384;
+    let tokensConsumed = 0;
 
     // 1. Attempt execution in Python AI service
     try {
@@ -89,28 +89,13 @@ router.post('/:id/run', async (req, res) => {
       console.warn(`[Workflows] Real DAG runner unavailable, using local simulation: ${err.message}`);
     }
 
-    // 2. Local fallback if service is unreachable
+    // 2. Python AI service was unreachable — return honest error instead of fake logs.
     if (!resultLogs || resultLogs.length === 0) {
-      const startTime = Date.now();
-      resultLogs.push(`[${new Date().toLocaleTimeString()}] [INFO] Starting execution for pipeline "${workflow.name}" (ID: ${workflow.id})`);
-      resultLogs.push(`[${new Date().toLocaleTimeString()}] [TRIGGER] Ingesting payload from source: ${workflow.trigger}`);
-      
-      for (let i = 0; i < workflow.nodes.length; i++) {
-        const node = workflow.nodes[i];
-        resultLogs.push(`[${new Date().toLocaleTimeString()}] [NODE ${i + 1}/${workflow.nodes.length}] Executing Step: "${node.label}" [${node.type.toUpperCase()}]`);
-        if (node.type === 'rag') {
-          resultLogs.push(`[${new Date().toLocaleTimeString()}] [RAG] Queried top-3 vectors with cosine score 0.942. Context window expanded.`);
-        } else if (node.type === 'llm') {
-          resultLogs.push(`[${new Date().toLocaleTimeString()}] [LLM] Dispatched inference to cluster. Generated 384 tokens with latency 180ms.`);
-        } else if (node.type === 'tool') {
-          resultLogs.push(`[${new Date().toLocaleTimeString()}] [TOOL] Called external API connector. 200 OK received.`);
-        } else if (node.type === 'action') {
-          resultLogs.push(`[${new Date().toLocaleTimeString()}] [ACTION] Outbound webhook payload delivered successfully. Response status: 200 OK.`);
-        }
-      }
-
-      durationMs = Date.now() - startTime + Math.floor(Math.random() * 200) + 150;
-      resultLogs.push(`[${new Date().toLocaleTimeString()}] [SUCCESS] Pipeline execution finished in ${durationMs}ms. Status: 0 errors.`);
+      return res.status(503).json({
+        success: false,
+        error: 'Python AI service is not reachable. Start it with `python ai/run.py` to execute real workflow DAGs.',
+        workflowId: id
+      });
     }
 
     workflow.lastRun = 'Just now';

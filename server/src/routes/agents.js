@@ -58,6 +58,11 @@ router.post('/run', async (req, res) => {
   }
 });
 
+// BUG-09 FIX: Track job IDs whose completion has already been activity-logged.
+// The previous approach of setting jobStatus._hasLoggedCompletion = true was a no-op —
+// jobStatus is a locally parsed JS object; mutating it has no effect on the next poll call.
+const LOGGED_JOBS = new Set();
+
 // GET /api/agents/runs/:jobId - poll status, progress, step logs, and blueprint
 router.get('/runs/:jobId', async (req, res) => {
   try {
@@ -75,16 +80,22 @@ router.get('/runs/:jobId', async (req, res) => {
 
     const jobStatus = await aiRes.json();
 
-    // If newly completed, sync agent steps into db.logActivity
-    if (jobStatus.status === 'completed' && jobStatus.logs && jobStatus.logs.length > 0) {
-      // Sync latest step log if not already logged
-      const latestLog = jobStatus.logs[jobStatus.logs.length - 1];
-      if (latestLog && !jobStatus._hasLoggedCompletion) {
-        jobStatus._hasLoggedCompletion = true;
+    // Log completion/failure exactly once per job using the server-side Set
+    if (!LOGGED_JOBS.has(jobId)) {
+      if (jobStatus.status === 'completed' && jobStatus.logs && jobStatus.logs.length > 0) {
+        LOGGED_JOBS.add(jobId);
+        const latestLog = jobStatus.logs[jobStatus.logs.length - 1];
         db.logActivity({
           event: `${latestLog.agent}: ${latestLog.action}`,
           detail: latestLog.detail,
           type: latestLog.type || 'success'
+        });
+      } else if (jobStatus.status === 'failed') {
+        LOGGED_JOBS.add(jobId);
+        db.logActivity({
+          event: 'Agent Job Failed',
+          detail: jobStatus.error || `Job ${jobId} failed.`,
+          type: 'error'
         });
       }
     }

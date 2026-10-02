@@ -44,7 +44,8 @@ export function localChunkText(text, chunkSize = 250, overlap = 40) {
       chunkId: `chk-${Date.now()}-${chunkIndex++}`,
       text: chunkWords.join(' '),
       tokenCount: Math.ceil(chunkWords.join(' ').length / 4),
-      embeddingDimension: 1536
+      // BUG-03 FIX: actual Python forge-hash-v1 produces 384-dim vectors, not 1536
+      embeddingDimension: 384
     });
     i += (chunkSize - overlap);
   }
@@ -75,27 +76,29 @@ export async function searchVectors(query, documents) {
       }
     }
   } catch (err) {
-    // Fallback to local simulation
+    console.error('[RAG] searchVectors proxy error:', err.message);
   }
 
   return localSearchVectors(query, documents);
 }
 
 export function localSearchVectors(query, documents) {
+  // BUG-03 FIX: Deterministic TF-style scoring — no Math.random().
+  // Score = base 0.30 + 0.12 per matching term, capped at 0.94.
   const qTerms = query.toLowerCase().split(/\W+/).filter(t => t.length > 2);
   const results = [];
 
   documents.forEach(doc => {
     const docText = (doc.title + ' ' + (doc.content || '')).toLowerCase();
-    let matchScore = 0.45;
+    let matchScore = 0.30;
 
     qTerms.forEach(term => {
       if (docText.includes(term)) {
-        matchScore += 0.15;
+        matchScore += 0.12;
       }
     });
 
-    matchScore = Math.min(0.98, matchScore + (Math.random() * 0.05));
+    matchScore = Math.min(0.94, matchScore);
 
     results.push({
       documentId: doc.id,
@@ -103,7 +106,8 @@ export function localSearchVectors(query, documents) {
       category: doc.category,
       similarityScore: parseFloat(matchScore.toFixed(3)),
       snippet: doc.content ? doc.content.substring(0, 180) + '...' : 'Relevant indexed knowledge chunk.',
-      vectorModel: doc.embeddingsModel || 'text-embedding-3-large'
+      // BUG-03 FIX: honest model label — local TF keyword match, not text-embedding-3-large
+      vectorModel: doc.embeddingsModel || 'local-keyword-match'
     });
   });
 
